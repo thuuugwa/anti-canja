@@ -62,7 +62,7 @@ def build_probe_config(wg: WGConfig, port: int, user: str, pw: str) -> dict:
     }
 
 
-def check_profile(p: Profile, timeout: float = 10.0) -> bool | None:
+def check_profile(p: Profile, timeout: float = 15.0) -> bool | None:
     """True = Online, False = Offline, None = não foi possível testar."""
     exe = paths.singbox_exe()
     if not p.valid or not exe.exists():
@@ -105,13 +105,21 @@ def check_profile(p: Profile, timeout: float = 10.0) -> bool | None:
         Path(cfg_path).unlink(missing_ok=True)
 
 
-def check_many(profiles: list[Profile], skip: set[str] | None = None, workers: int = 4) -> dict[str, bool | None]:
+def check_many(profiles: list[Profile], skip: set[str] | None = None, workers: int = 1) -> dict[str, bool | None]:
+    """Testa um perfil por vez (ProtonVPN Free só aceita 1 conexão simultânea)."""
     skip = skip or set()
     todo = [p for p in profiles if p.name not in skip]
     if not todo:
         return {}
     with ThreadPoolExecutor(max_workers=min(workers, len(todo))) as ex:
         res = dict(zip((p.name for p in todo), ex.map(check_profile, todo), strict=True))
+    for p in todo:  # segunda chance antes de marcar Offline
+        if res[p.name] is False:
+            time.sleep(2)
+            res[p.name] = check_profile(p)
+    if todo and all(v is False for v in res.values()) and len(todo) > 1:
+        log.warning("Nenhum perfil respondeu: provável problema de rede/firewall, não dos perfis.")
+        return {k: None for k in res}
     on = sum(1 for v in res.values() if v)
     off = sum(1 for v in res.values() if v is False)
     log.info("Status dos perfis: %d online, %d offline.", on, off)
