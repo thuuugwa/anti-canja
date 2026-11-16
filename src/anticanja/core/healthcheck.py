@@ -105,19 +105,27 @@ def check_profile(p: Profile, timeout: float = 15.0) -> bool | None:
         Path(cfg_path).unlink(missing_ok=True)
 
 
-def check_many(profiles: list[Profile], skip: set[str] | None = None, workers: int = 1) -> dict[str, bool | None]:
-    """Testa um perfil por vez (ProtonVPN Free só aceita 1 conexão simultânea)."""
+def check_many(profiles: list[Profile], skip: set[str] | None = None, workers: int = 16) -> dict[str, bool | None]:
+    """Teste rápido via handshake WireGuard, todos em paralelo (~3 s no total)."""
+    from anticanja.core import wghandshake
     skip = skip or set()
     todo = [p for p in profiles if p.name not in skip]
     if not todo:
         return {}
+
+    def one(p: Profile) -> bool | None:
+        if not p.valid:
+            return False
+        c = p.config
+        try:
+            return wghandshake.probe(c.peer.endpoint_host, c.peer.endpoint_port, c.private_key, c.peer.public_key)
+        except Exception as e:  # noqa: BLE001
+            log.warning("Teste de %s falhou: %s", p.name, e)
+            return None
+
     with ThreadPoolExecutor(max_workers=min(workers, len(todo))) as ex:
-        res = dict(zip((p.name for p in todo), ex.map(check_profile, todo), strict=True))
-    for p in todo:  # segunda chance antes de marcar Offline
-        if res[p.name] is False:
-            time.sleep(2)
-            res[p.name] = check_profile(p)
-    if todo and all(v is False for v in res.values()) and len(todo) > 1:
+        res = dict(zip((p.name for p in todo), ex.map(one, todo), strict=True))
+    if len(todo) > 1 and all(v is False for v in res.values()):
         log.warning("Nenhum perfil respondeu: provável problema de rede/firewall, não dos perfis.")
         return {k: None for k in res}
     on = sum(1 for v in res.values() if v)
