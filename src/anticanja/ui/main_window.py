@@ -934,12 +934,8 @@ class MainWindow(QMainWindow):
         if self._checking:
             return
         st = self.tunnel.status
-        if st.state in (State.CONNECTED, State.CONNECTING):
-            # ProtonVPN Free aceita só 1 conexão por vez: testar outros perfis
-            # enquanto um está conectado faria todos parecerem Offline.
-            log.info("Status online/offline é testado só com a VPN desconectada.")
-            return
-        targets = [p for p in self._profiles_cache if p.valid]
+        skip = {st.profile} if st.profile and st.state in (State.CONNECTED, State.CONNECTING) else set()
+        targets = [p for p in self._profiles_cache if p.valid and p.name not in skip]
         if not targets:
             return
         self._checking = {p.name for p in targets}
