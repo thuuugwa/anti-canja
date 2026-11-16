@@ -2,7 +2,7 @@
 
 APP_NAME = "ANTI CANJA"
 APP_ID = "AntiCanja"
-__version__ = "1.5.3"
+__version__ = "1.6.0"
 
 # Versão do sing-box para a qual o gerador de configuração foi escrito.
 # Formato de config usado: endpoints (1.11+), servidores DNS tipados (1.12+),
