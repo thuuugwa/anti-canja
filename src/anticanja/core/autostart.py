@@ -69,7 +69,7 @@ def _task_xml(exe: str, args: str) -> str:
 
 def _schtasks(*args: str) -> subprocess.CompletedProcess:
     return subprocess.run(
-        ["schtasks.exe", *args], capture_output=True, text=True, timeout=20,
+        ["schtasks.exe", *args], capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=20,
         creationflags=0x08000000,
     )
 

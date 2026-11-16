@@ -38,7 +38,7 @@ def _curl(exe: Path, timeout: int = 15) -> str | None:
     try:
         r = subprocess.run(
             [str(exe), "-s", "-4", "--max-time", str(timeout), URL],
-            capture_output=True, text=True, timeout=timeout + 5, creationflags=0x08000000,
+            capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=timeout + 5, creationflags=0x08000000,
         )
         out = r.stdout.strip()
         return out if r.returncode == 0 and out and len(out) < 64 else None

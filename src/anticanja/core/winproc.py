@@ -193,7 +193,7 @@ def remove_stale_adapters(prefix: str = "AntiCanja") -> int:
     try:
         r = subprocess.run(
             ["powershell", "-NoProfile", "-NonInteractive", "-Command", script],
-            capture_output=True, text=True, timeout=30, creationflags=CREATE_NO_WINDOW,
+            capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=30, creationflags=CREATE_NO_WINDOW,
         )
         return int((r.stdout or "0").strip().splitlines()[-1] or 0)
     except (OSError, subprocess.TimeoutExpired, ValueError, IndexError):

@@ -25,7 +25,7 @@ _NO_WINDOW = 0x08000000
 
 
 def _netsh(*args: str) -> subprocess.CompletedProcess:
-    return subprocess.run(["netsh", "advfirewall", "firewall", *args], capture_output=True, text=True,
+    return subprocess.run(["netsh", "advfirewall", "firewall", *args], capture_output=True, text=True, encoding="utf-8", errors="replace",
                           timeout=20, creationflags=_NO_WINDOW)
 
 

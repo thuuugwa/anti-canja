@@ -339,7 +339,7 @@ class TunnelManager:
         try:
             r = subprocess.run(
                 [str(exe), "check", "-c", str(self._config_path), "--disable-color"],
-                capture_output=True, text=True, timeout=20,
+                capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=20,
                 creationflags=winproc.CREATE_NO_WINDOW if winproc.IS_WINDOWS else 0,
             )
         except subprocess.TimeoutExpired as e:
