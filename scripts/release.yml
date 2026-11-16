@@ -1,0 +1,44 @@
+# Publica uma nova versão do ANTI CANJA automaticamente.
+# Como usar: rode scripts\publicar.ps1 -Versao 1.4.0  (ou crie e envie a tag v1.4.0).
+# O GitHub compila no Windows, gera o .zip + .sha256 e cria a Release.
+# Os usuários recebem a atualização na próxima vez que abrirem o programa.
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Conferir versão do código x tag
+        shell: pwsh
+        run: |
+          $tag = "${{ github.ref_name }}".TrimStart("v")
+          $code = (python -c "import sys; sys.path.insert(0,'src'); import anticanja; print(anticanja.__version__)").Trim()
+          if ($tag -ne $code) { throw "Tag v$tag diferente da versão no código ($code). Rode scripts\publicar.ps1." }
+
+      - name: Compilar (sem perfis .conf)
+        shell: pwsh
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: ./build.ps1 -NoConfs
+
+      - name: Criar Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: ANTI CANJA ${{ github.ref_name }}
+          body_path: NOTAS_DA_VERSAO.md
+          files: |
+            dist/AntiCanja-*-win64.zip
+            dist/AntiCanja-*-win64.zip.sha256
