@@ -1,6 +1,5 @@
-## ANTI CANJA 1.5.0
+## ANTI CANJA 1.5.1
 
-- Nova coluna Status: Online, Offline e Conectado.
-- Cada perfil e testado de verdade (handshake WireGuard) sem mexer na rede.
-- Perfis offline vao para o fim da lista e sao ignorados no Conectar ao melhor ping.
-- Clique direito: Testar status (online/offline).
+- Status Online/Offline corrigido: o ProtonVPN Free aceita só 1 conexão por vez, então os perfis agora são testados um de cada vez e só com a VPN desconectada (antes, testar com a VPN ligada marcava quase tudo como Offline).
+- Cada perfil que falha ganha uma segunda tentativa antes de virar Offline.
+- Se nenhum perfil responder, o app considera problema de rede e não marca todos como Offline.
