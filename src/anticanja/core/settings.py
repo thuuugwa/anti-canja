@@ -33,7 +33,8 @@ class Settings:
     settings_version: int = 2
     check_updates: bool = True        # verificar atualizações ao abrir
     auto_install_updates: bool = False  # instalar sem perguntar
-    skipped_version: str | None = None  # ao desconectar/sair, reabre o Discord fora da VPN
+    skipped_version: str | None = None
+    bundled_seen: list[str] = field(default_factory=list)  # hashes dos .conf do pacote já importados  # ao desconectar/sair, reabre o Discord fora da VPN
 
     @classmethod
     def load(cls) -> "Settings":
