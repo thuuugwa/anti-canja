@@ -1,4 +1,3 @@
-## ANTI CANJA 1.5.2
+## ANTI CANJA 1.5.3
 
-- Teste de Status muito mais rápido: em vez de abrir um túnel por perfil, o app manda só o "olá" do WireGuard (handshake) para todos os servidores ao mesmo tempo. Leva poucos segundos no total.
-- Servidor respondeu = Online. Chave revogada ou servidor fora do ar = Offline.
+- Volta ao funcionamento da versão 1.5.0 (teste de Status original).

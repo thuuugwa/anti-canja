@@ -1,5 +1,4 @@
 PySide6-Essentials>=6.7,<7
-cryptography>=42
 psutil>=5.9
 pillow>=10
 pyinstaller>=6.10
