@@ -1,3 +1,3 @@
-## ANTI CANJA 1.5.3
+## ANTI CANJA 1.6.0
 
-- Volta ao funcionamento da versão 1.5.0 (teste de Status original).
+- O pacote agora vem com 28 perfis .conf (MX e US) que são importados sozinhos ao atualizar/abrir.
