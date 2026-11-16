@@ -10,3 +10,4 @@ bin/LICENSE-sing-box.txt
 *.spec
 confs/
 *.conf
+perfis/

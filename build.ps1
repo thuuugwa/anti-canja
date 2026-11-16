@@ -125,9 +125,11 @@ New-Item -ItemType Directory -Force -Path dist\AntiCanja\bin | Out-Null
 Copy-Item bin\sing-box.exe dist\AntiCanja\bin\ -Force
 if (Test-Path bin\LICENSE-sing-box.txt) { Copy-Item bin\LICENSE-sing-box.txt dist\AntiCanja\bin\ -Force }
 Copy-Item README.md dist\AntiCanja\ -Force
-if ((Test-Path confs) -and -not $NoConfs) {
+# Perfis do pacote: pasta "perfis" (preferida) ou "confs"
+$perfisDir = if (Test-Path perfis) { "perfis" } else { "confs" }
+if ((Test-Path $perfisDir) -and -not $NoConfs) {
     New-Item -ItemType Directory -Force -Path dist\AntiCanja\confs | Out-Null
-    Copy-Item confs\*.conf dist\AntiCanja\confs\ -Force -ErrorAction SilentlyContinue
+    Copy-Item "$perfisDir\*.conf" dist\AntiCanja\confs\ -Force -ErrorAction SilentlyContinue
     Write-Host "Perfis incluidos no pacote: $((Get-ChildItem dist\AntiCanja\confs -Filter *.conf).Count)"
 }
 Copy-Item docs dist\AntiCanja\docs -Recurse -Force
