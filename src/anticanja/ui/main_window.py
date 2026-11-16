@@ -36,7 +36,7 @@ from PySide6.QtWidgets import (
 )
 
 from anticanja import APP_NAME, __version__
-from anticanja.core import autostart, discord, latency, logbus, paths, updater, winproc
+from anticanja.core import autostart, discord, healthcheck, latency, logbus, paths, updater, winproc
 from anticanja.core.profiles import Profile, ProfileManager
 from anticanja.core.settings import Settings
 from anticanja.core.tunnel import State, TunnelError, TunnelManager, TunnelStatus
@@ -74,6 +74,7 @@ class Bridge(QObject):
     discord_changed = Signal(object)
     task_done = Signal(str, object)  # (nome, erro ou None)
     pings_done = Signal(object)      # dict[host, PingResult]
+    health_done = Signal(object)     # dict[nome, True/False/None]
     update_checked = Signal(object, object, bool)  # (Release|None, erro|None, manual)
     update_progress = Signal(int, int)
     update_downloaded = Signal(object, object)     # (zip Path|None, erro|None)
@@ -125,6 +126,9 @@ class MainWindow(QMainWindow):
         self.bridge.discord_changed.connect(self._render_discord)
         self.bridge.task_done.connect(self._on_task_done)
         self.bridge.pings_done.connect(self._on_pings_done)
+        self.bridge.health_done.connect(self._on_health_done)
+        self._health: dict = {}
+        self._checking: set = set()
         self.bridge.update_checked.connect(self._on_update_checked)
         self.bridge.update_progress.connect(self._on_update_progress)
         self.bridge.update_downloaded.connect(self._on_update_downloaded)
@@ -669,6 +673,8 @@ class MainWindow(QMainWindow):
             self.tray.showMessage(APP_NAME, msg.split("] ", 1)[-1][:200], QSystemTrayIcon.MessageIcon.Warning, 5000)
 
     def _render_tunnel(self, st: TunnelStatus) -> None:
+        if st.profile and st.state == State.CONNECTED and st.healthy is not None:
+            self._health[st.profile] = bool(st.healthy)
         color = theme.STATE_COLORS.get(st.state.value, theme.MUTED)
         if st.state == State.CONNECTED and st.healthy is False:
             color = theme.AMBER
@@ -715,8 +721,25 @@ class MainWindow(QMainWindow):
             name = self.table.item(r, 0).data(Qt.ItemDataRole.UserRole)
             it = self.table.item(r, 4)
             is_active = name == active
-            it.setText("● Ativo" if is_active else "-")
-            it.setForeground(QBrush(QColor(theme.RED_HOVER if is_active else theme.MUTED)))
+            st = self.tunnel.status
+            h = self._health.get(name)
+            if is_active and st.state == State.CONNECTED and st.healthy is not False:
+                text, color = "● Conectado", theme.GREEN
+            elif is_active and st.state == State.CONNECTING:
+                text, color = "● Conectando", theme.AMBER
+            elif name in self._checking:
+                text, color = "testando…", theme.MUTED
+            elif h is True:
+                text, color = "● Online", "#7fd6a4"
+            elif h is False or (is_active and st.healthy is False):
+                text, color = "● Offline", theme.RED
+            else:
+                text, color = "-", theme.MUTED
+            it.setText(text)
+            it.setForeground(QBrush(QColor(color)))
+            it.setToolTip({"● Online": "Perfil testado e funcionando.",
+                           "● Offline": "Sem resposta: chave revogada/expirada ou servidor fora do ar.",
+                           "● Conectado": "Você está usando este perfil agora."}.get(text, ""))
             sel = self.table.item(r, 0).isSelected()
             self.table.item(r, 0).setText(("◉  " if sel else "○  ") + name)
         if hasattr(self, "discord_state"):
@@ -751,7 +774,8 @@ class MainWindow(QMainWindow):
         sel_name = sel.name if sel else self.settings.last_profile
         def _ping_key(p):
             r = self._pings.get(p.endpoint_host) if p.valid else None
-            return (r is None or r.ms is None, r.ms if r and r.ms is not None else 0, p.name.lower())
+            return (self._health.get(p.name) is False, r is None or r.ms is None,
+                    r.ms if r and r.ms is not None else 0, p.name.lower())
 
         self._profiles_cache = sorted(self.profiles.list(), key=_ping_key)
         self.table.setRowCount(0)
@@ -859,7 +883,8 @@ class MainWindow(QMainWindow):
         self._pings = results
         self.btn_refresh.setEnabled(True)
         self.refresh_profiles()  # reordena: menor ping primeiro
-        b = latency.best(results)
+        offline_hosts = {p.endpoint_host for p in self._profiles_cache if self._health.get(p.name) is False}
+        b = latency.best({h: r for h, r in results.items() if h not in offline_hosts})
         prof = next((p for p in self._profiles_cache if p.valid and b and p.endpoint_host == b.host), None)
         if prof:
             log.info("Melhor servidor: %s — %s.", prof.name, b.label)
@@ -878,6 +903,7 @@ class MainWindow(QMainWindow):
             else:
                 QMessageBox.warning(self, APP_NAME, "Nenhum servidor respondeu ao ping.")
         self._update_buttons()
+        self.run_health()
 
     def _render_pings(self) -> None:
         b = latency.best(self._pings) if self._pings else None
@@ -902,6 +928,26 @@ class MainWindow(QMainWindow):
             else:
                 color = theme.RED
             it.setForeground(QBrush(QColor(color)))
+
+    def run_health(self) -> None:
+        """Testa (em segundo plano) se cada perfil está Online ou Offline."""
+        if self._checking:
+            return
+        st = self.tunnel.status
+        skip = {st.profile} if st.profile and st.state in (State.CONNECTED, State.CONNECTING) else set()
+        targets = [p for p in self._profiles_cache if p.valid and p.name not in skip]
+        if not targets:
+            return
+        self._checking = {p.name for p in targets}
+        self._render_active_column()
+        log.info("Testando status de %d perfil(is)…", len(targets))
+        threading.Thread(target=lambda: self.bridge.health_done.emit(healthcheck.check_many(targets)),
+                         name="health", daemon=True).start()
+
+    def _on_health_done(self, results: dict) -> None:
+        self._checking = set()
+        self._health.update(results)
+        self.refresh_profiles()  # perfis offline vão para o fim da lista
 
     def _select_profile(self, name: str) -> None:
         for r in range(self.table.rowCount()):
@@ -942,6 +988,7 @@ class MainWindow(QMainWindow):
         m.addAction("Conectar", self.connect_selected).setEnabled(p.valid and not self._busy)
         m.addAction("Ver detalhes…", lambda: self._show_details(p))
         m.addAction("Testar ping de todos", lambda: self.run_pings())
+        m.addAction("Testar status (online/offline)", self.run_health)
         a_iso = m.addAction("Testar isolamento", self.run_selftest)
         a_iso.setEnabled(self.tunnel.status.state in (State.CONNECTED, State.BLOCKING))
         m.addSeparator()
