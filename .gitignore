@@ -1,0 +1,12 @@
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+build/
+dist/
+bin/sing-box.exe
+bin/sing-box
+bin/LICENSE-sing-box.txt
+*.spec
+confs/
+*.conf
