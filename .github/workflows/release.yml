@@ -28,11 +28,11 @@ jobs:
           $code = (python -c "import sys; sys.path.insert(0,'src'); import anticanja; print(anticanja.__version__)").Trim()
           if ($tag -ne $code) { throw "Tag v$tag diferente da versão no código ($code). Rode scripts\publicar.ps1." }
 
-      - name: Compilar (sem perfis .conf)
+      - name: Compilar (com perfis .conf)
         shell: pwsh
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: ./build.ps1 -NoConfs
+        run: ./build.ps1
 
       - name: Criar Release
         uses: softprops/action-gh-release@v2
