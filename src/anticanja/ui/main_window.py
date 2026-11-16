@@ -806,20 +806,35 @@ class MainWindow(QMainWindow):
     def _import_bundled_confs(self) -> None:
         """Importa os .conf que acompanham o pacote (pasta "confs" ao lado do .exe).
 
-        Só roda quando ainda não há nenhum perfil, então perfis excluídos pelo
-        usuário não voltam sozinhos.
+        Cada arquivo do pacote é importado uma única vez (controle por hash): perfis
+        novos de uma atualização entram sozinhos, e um perfil que o usuário excluiu
+        não volta.
         """
+        import hashlib
+
         bundled = paths.app_root() / "confs"
-        if self.profiles.list() or not bundled.is_dir():
+        if not bundled.is_dir():
             return
-        files = sorted(bundled.glob("*.conf"))
-        if not files:
+        seen = set(self.settings.bundled_seen)
+        new_files = []
+        for f in sorted(bundled.glob("*.conf")):
+            try:
+                h = hashlib.sha256(f.read_bytes()).hexdigest()
+            except OSError:
+                continue
+            if h not in seen:
+                new_files.append(f)
+                seen.add(h)
+        if not new_files:
             return
-        ok, failed = self.profiles.import_files(files)
+        ok, failed = self.profiles.import_files(new_files)
+        self.settings.bundled_seen = sorted(seen)
+        self.settings.save()
         if ok:
             log.info("%d perfil(is) do pacote importado(s) automaticamente.", len(ok))
         for name, err in failed:
-            log.warning("Perfil do pacote ignorado (%s): %s", name, err)
+            if "já importado" not in err:
+                log.warning("Perfil do pacote ignorado (%s): %s", name, err)
 
     # ================================================================ ping
     def run_pings(self, connect_best: bool = False) -> None:
