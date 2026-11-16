@@ -1,4 +1,4 @@
-# ANTI CANJA
+# CANJA
 
 **Gerenciador de VPN exclusivo para o Discord no Windows.**
 Somente o Discord sai pela VPN (perfis WireGuard `.conf` do ProtonVPN). Navegadores, jogos e o resto do Windows continuam usando a sua internet normal.
