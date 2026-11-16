@@ -19,6 +19,7 @@ sys.path.insert(0, str(ROOT / "src"))
 from anticanja.core import paths  # noqa: E402
 from anticanja.core.singbox_config import TunnelOptions, build_block_config, build_vpn_config, write_config  # noqa: E402
 from anticanja.core.wgconf import parse_text  # noqa: E402
+from anticanja.core.healthcheck import build_probe_config  # noqa: E402
 
 
 def key() -> str:
@@ -52,6 +53,7 @@ def main() -> int:
         "vpn-sem-dns": build_vpn_config(wg, TunnelOptions(protect_dns=False, strict_route=False)),
         "vpn-pasta-extra": build_vpn_config(wg, TunnelOptions(extra_discord_dirs=[r"D:\Apps (x86)\Discord"])),
         "bloqueio": build_block_config(TunnelOptions()),
+        "teste-status": build_probe_config(wg, 45679, "u", "p" * 12),
         "vpn-gvisor": build_vpn_config(wg, TunnelOptions(stack="gvisor", exclude_ips=["203.0.113.10"])),
     }
     failed = 0
