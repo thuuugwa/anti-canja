@@ -58,12 +58,52 @@ def settings_file() -> Path:
     return data_dir() / "settings.json"
 
 
+def _bundle_dir() -> Path | None:
+    """Pasta interna do executável único (PyInstaller --onefile)."""
+    b = getattr(sys, "_MEIPASS", None)
+    return Path(b) if b else None
+
+
+def ensure_layout() -> None:
+    """Cria as pastas que o programa usa (ao lado do .exe e em %APPDATA%).
+
+    Versão em .exe único: na primeira execução extrai o sing-box para a pasta
+    bin\ ao lado do .exe e cria a pasta confs\ vazia.
+    """
+    for f in (data_dir, profiles_dir, runtime_dir, logs_dir):
+        f()
+    if not getattr(sys, "frozen", False):
+        return
+    root = app_root()
+    for sub in ("bin", "confs"):
+        try:
+            (root / sub).mkdir(exist_ok=True)
+        except OSError:
+            pass
+    bundle = _bundle_dir()
+    if bundle is None:
+        return
+    name = "sing-box.exe" if sys.platform == "win32" else "sing-box"
+    src = bundle / "bin" / name
+    dst = root / "bin" / name
+    if src.exists():
+        try:
+            if not dst.exists() or dst.stat().st_size != src.stat().st_size:
+                import shutil
+                shutil.copy2(src, dst)
+        except OSError:
+            pass  # pasta sem permissão de escrita: usa a cópia interna
+
+
 def singbox_exe() -> Path:
     override = os.environ.get("ANTICANJA_SINGBOX")
     if override:
         return Path(override)
     name = "sing-box.exe" if sys.platform == "win32" else "sing-box"
-    for candidate in (app_root() / "bin" / name, app_root() / name):
+    cands = [app_root() / "bin" / name, app_root() / name]
+    if _bundle_dir():
+        cands.append(_bundle_dir() / "bin" / name)
+    for candidate in cands:
         if candidate.exists():
             return candidate
     return app_root() / "bin" / name
