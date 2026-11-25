@@ -34,6 +34,10 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: ./build.ps1
 
+      - name: Compilar .exe unico (pasta confs vazia)
+        shell: pwsh
+        run: ./build.ps1 -OneFile -NoConfs -SkipTests
+
       - name: Criar Release
         uses: softprops/action-gh-release@v2
         with:
@@ -42,3 +46,4 @@ jobs:
           files: |
             dist/AntiCanja-*-win64.zip
             dist/AntiCanja-*-win64.zip.sha256
+            dist/AntiCanja-*.exe
