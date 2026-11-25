@@ -1,3 +1,3 @@
-## ANTI CANJA 1.6.0
+## ANTI CANJA 1.7.0
 
-- O pacote agora vem com 28 perfis .conf (MX e US) que são importados sozinhos ao atualizar/abrir.
+- Nova versão em **.exe único** (AntiCanja-1.7.0.exe): ao abrir, cria sozinho as pastas do programa (bin e a pasta confs vazia ao lado do .exe, e os dados em %APPDATA%\AntiCanja).

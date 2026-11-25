@@ -19,7 +19,10 @@ param(
     [switch]$SkipTests,
     # Não incluir a pasta confs no pacote (OBRIGATÓRIO para publicar no GitHub:
     # os .conf contêm chaves privadas).
-    [switch]$NoConfs
+    [switch]$NoConfs,
+    # Gera um único AntiCanja.exe (sing-box embutido). Ao abrir, ele cria
+    # bin\ e confs\ (vazia) ao lado do .exe.
+    [switch]$OneFile
 )
 
 # "Continue": no PowerShell 5.1, stderr de programas nativos (pip, PyInstaller) vira erro
@@ -104,8 +107,32 @@ if (-not $SkipTests) {
 if (-not (Test-Path assets\anticanja.ico)) { & $venvPy scripts\make_icon.py }
 
 # ---------------------------------------------------------------- empacotamento
-Step "Empacotando com PyInstaller"
 $appVer = (& $venvPy -c "import sys; sys.path.insert(0,'src'); import anticanja; print(anticanja.__version__)").Trim()
+if ($OneFile) {
+    Step "Empacotando .exe unico com PyInstaller"
+    Remove-Item build, dist\onefile -Recurse -Force -ErrorAction SilentlyContinue
+    & $venvPy -m PyInstaller --log-level WARN `
+        --noconfirm --clean --windowed --onefile `
+        --name AntiCanja `
+        --distpath dist\onefile `
+        --icon assets\anticanja.ico `
+        --uac-admin `
+        --paths src `
+        --add-data "assets;assets" `
+        --add-binary "bin\sing-box.exe;bin" `
+        --exclude-module tkinter `
+        --exclude-module PySide6.QtWebEngineCore `
+        --exclude-module PySide6.Qt3DCore `
+        --version-file scripts\version_info.txt `
+        run_anticanja.py 2>&1 | ForEach-Object { "$_" }
+    if ($LASTEXITCODE -ne 0) { throw "PyInstaller (onefile) falhou." }
+    $exeOut = "dist\AntiCanja-$appVer.exe"
+    Move-Item dist\onefile\AntiCanja.exe $exeOut -Force
+    $sha1 = (Get-FileHash $exeOut -Algorithm SHA256).Hash.ToLower()
+    Write-Host "`nPronto: $exeOut`nSHA-256: $sha1" -ForegroundColor Green
+    exit 0
+}
+Step "Empacotando com PyInstaller"
 Remove-Item build, dist\AntiCanja -Recurse -Force -ErrorAction SilentlyContinue
 & $venvPy -m PyInstaller --log-level WARN `
     --noconfirm --clean --windowed `
