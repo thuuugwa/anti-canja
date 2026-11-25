@@ -28,6 +28,12 @@ def main(argv: list[str] | None = None) -> int:
             return 0
         # Usuário recusou o UAC: segue sem poder conectar (a interface avisa).
 
+    try:
+        from anticanja.core import paths as _paths
+        _paths.ensure_layout()  # pastas do programa + confs vazia
+    except Exception:  # noqa: BLE001
+        pass
+
     if winproc.IS_WINDOWS:
         try:
             import ctypes
